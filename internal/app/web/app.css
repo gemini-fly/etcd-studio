@@ -1732,6 +1732,11 @@ select:focus {
   padding-top: 7px;
 }
 
+.value-status-actions {
+  display: flex;
+  gap: 14px;
+}
+
 .text-button {
   background: transparent;
   color: var(--accent);
@@ -1743,6 +1748,23 @@ select:focus {
 .text-button:hover {
   color: var(--accent-hover);
   text-decoration: underline;
+}
+
+.json-validation-result {
+  background: var(--accent-soft);
+  border: 1px solid #c8e5d5;
+  border-radius: 6px;
+  color: var(--accent-hover);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 9px 0 0;
+  padding: 7px 9px;
+}
+
+.json-validation-result.error {
+  background: var(--danger-soft);
+  border-color: #efc7c2;
+  color: var(--danger);
 }
 
 .metadata {

@@ -27,4 +27,7 @@ jobs:
       - name: Build
         run: CGO_ENABLED=0 go build -trimpath ./cmd/etcd-studio
       - name: Check frontend JavaScript
-        run: node --check internal/app/web/app.js
+        run: |
+          node --check internal/app/web/json-validator.js
+          node --check internal/app/web/app.js
+          node --test internal/app/webtest/json-validator.test.mjs

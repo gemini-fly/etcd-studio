@@ -54,7 +54,8 @@ const el = Object.fromEntries(
     "resultCount", "activePrefix", "keyList", "listState", "previousButton", "nextButton",
     "pageLabel", "emptyEditor", "editorForm", "editorMode", "editorKeyTitle",
     "deleteButton", "keyInput", "copyKeyInlineButton", "keyEncodingLabel", "keyHelp",
-    "encodingSelect", "valueInput", "valueStats", "copyValueButton", "createRevision",
+    "encodingSelect", "valueInput", "valueStats", "validateJSONButton", "jsonValidationResult",
+    "copyValueButton", "createRevision",
     "modRevision", "versionValue", "leaseValue", "saveHint", "cancelButton", "saveButton",
     "deleteDialog", "deleteKeyName", "confirmDeleteButton", "toastRegion", "rollbackButton",
     "rollbackDialog", "rollbackKeyName", "rollbackRevision", "rollbackSource", "rollbackEncoding",
@@ -1412,6 +1413,7 @@ function showEditor(detail) {
   state.valueEncoding = detail.value_is_utf8 === false ? "base64" : "utf8";
   el.encodingSelect.value = state.valueEncoding;
   el.valueInput.value = state.valueEncoding === "base64" ? detail.value_base64 || "" : detail.value || "";
+  clearJSONValidation();
   el.deleteButton.hidden = state.creating;
   el.rollbackButton.hidden = state.creating;
   el.rollbackButton.disabled = false;
@@ -1699,6 +1701,7 @@ function changeEncoding() {
     }
   }
   state.valueEncoding = nextEncoding;
+  clearJSONValidation();
   updateValueStats();
 }
 
@@ -1715,6 +1718,24 @@ function updateValueStats() {
     const bytes = new TextEncoder().encode(text).byteLength;
     el.valueStats.textContent = `${[...text].length.toLocaleString()} 字符 · ${formatBytes(bytes)}`;
   }
+}
+
+function clearJSONValidation() {
+  el.jsonValidationResult.hidden = true;
+  el.jsonValidationResult.textContent = "";
+  el.jsonValidationResult.classList.remove("error");
+}
+
+function validateJSONValue() {
+  let result;
+  if (state.valueEncoding !== "utf8") {
+    result = { valid: false, message: "请先将 Value 编码切换为 UTF-8，再校验 JSON" };
+  } else {
+    result = globalThis.EtcdStudioJSONValidator.validate(el.valueInput.value);
+  }
+  el.jsonValidationResult.textContent = result.message;
+  el.jsonValidationResult.hidden = false;
+  el.jsonValidationResult.classList.toggle("error", !result.valid);
 }
 
 function showListState(kind, message) {
@@ -1819,9 +1840,13 @@ el.newKeyButton.addEventListener("click", beginCreate);
 el.emptyNewKeyButton.addEventListener("click", beginCreate);
 el.cancelButton.addEventListener("click", closeEditor);
 el.editorForm.addEventListener("submit", saveKey);
-el.valueInput.addEventListener("input", updateValueStats);
+el.valueInput.addEventListener("input", () => {
+  updateValueStats();
+  clearJSONValidation();
+});
 el.encodingSelect.addEventListener("change", changeEncoding);
 el.copyKeyInlineButton.addEventListener("click", () => copyText(el.keyInput.value, "Key "));
+el.validateJSONButton.addEventListener("click", validateJSONValue);
 el.copyValueButton.addEventListener("click", () => copyText(el.valueInput.value, "Value "));
 el.rollbackButton.addEventListener("click", previewRollback);
 el.rollbackLoadMoreButton.addEventListener("click", async () => {

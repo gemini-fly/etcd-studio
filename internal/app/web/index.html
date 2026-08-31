@@ -6,6 +6,7 @@
     <meta name="description" content="轻量、安全的 etcd Key-Value 管理界面" />
     <title>Etcd Studio</title>
     <link rel="stylesheet" href="/app.css" />
+    <script src="/json-validator.js" defer></script>
     <script src="/app.js" defer></script>
   </head>
   <body>
@@ -266,8 +267,12 @@
               <textarea class="code-editor" id="valueInput" autocomplete="off" spellcheck="false" placeholder="输入 Value…"></textarea>
               <div class="editor-status">
                 <span id="valueStats">0 字符 · 0 B</span>
-                <button class="text-button" id="copyValueButton" type="button">复制 Value</button>
+                <div class="value-status-actions">
+                  <button class="text-button" id="validateJSONButton" type="button">校验 JSON</button>
+                  <button class="text-button" id="copyValueButton" type="button">复制 Value</button>
+                </div>
               </div>
+              <p class="json-validation-result" id="jsonValidationResult" role="status" hidden></p>
             </div>
 
             <dl class="metadata" id="metadata">

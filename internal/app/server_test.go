@@ -1241,6 +1241,10 @@ func TestEmbeddedPageAndSecurityHeaders(t *testing.T) {
 	if !bytes.Contains(recorder.Body.Bytes(), []byte(`<span>删除 Key</span>`)) {
 		t.Fatal("embedded editor does not expose a visible delete Key action")
 	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`id="validateJSONButton"`)) ||
+		!bytes.Contains(recorder.Body.Bytes(), []byte(`id="jsonValidationResult"`)) {
+		t.Fatal("embedded editor does not expose JSON validation controls")
+	}
 	if recorder.Header().Get("Content-Security-Policy") == "" {
 		t.Fatal("missing Content-Security-Policy header")
 	}
