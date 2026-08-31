@@ -6,6 +6,10 @@ updates:
       interval: monthly
     open-pull-requests-limit: 5
     labels: ["dependencies"]
+    groups:
+      etcd-modules:
+        patterns:
+          - "go.etcd.io/etcd/*"
   - package-ecosystem: github-actions
     directory: /
     schedule:
