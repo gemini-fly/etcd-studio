@@ -1,0 +1,23 @@
+name: 功能建议
+description: 建议新的使用场景或改进
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 使用场景
+      description: 说明当前遇到的问题，而不仅是期望的实现方式。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: 权限与数据影响
+      description: 是否涉及管理员/操作员权限、审计、历史记录或敏感信息？

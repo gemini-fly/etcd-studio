@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="轻量、安全的 etcd Key-Value 管理界面" />
+    <title>Etcd Studio</title>
+    <link rel="stylesheet" href="/app.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <main class="auth-page" id="authPage">
+      <div class="auth-shell">
+        <div class="auth-brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 28 28"><path d="M6 7.25C6 5.45 9.58 4 14 4s8 1.45 8 3.25S18.42 10.5 14 10.5 6 9.05 6 7.25Z" /><path d="M6 7.25v6.5C6 15.55 9.58 17 14 17s8-1.45 8-3.25v-6.5" /><path d="M6 13.75v6.5c0 1.8 3.58 3.25 8 3.25s8-1.45 8-3.25v-6.5" /></svg>
+          </span>
+          <span><strong>Etcd Studio</strong><small>安全访问控制台</small></span>
+        </div>
+
+        <section class="auth-card">
+          <div class="auth-loading" id="authLoading">
+            <span class="spinner" aria-hidden="true"></span>
+            <p>正在检查登录状态…</p>
+          </div>
+
+          <form class="auth-form" id="passwordChangeForm" hidden>
+            <div class="auth-heading">
+              <span class="dialog-eyebrow">首次登录</span>
+              <h1>设置新的管理员密码</h1>
+              <p>你已使用终端输出的一次性临时密码完成登录。设置新密码后即可访问平台。</p>
+            </div>
+            <div class="temporary-admin-identity">当前账户：<strong id="passwordChangeUsername">admin</strong></div>
+            <label for="newPasswordInput">新密码</label>
+            <input id="newPasswordInput" type="password" autocomplete="new-password" required />
+            <ul class="password-requirements" id="passwordRequirements" aria-label="密码规则">
+              <li data-password-rule="length"><span aria-hidden="true">✓</span>至少 10 个字符</li>
+              <li data-password-rule="uppercase"><span aria-hidden="true">✓</span>包含大写字母</li>
+              <li data-password-rule="lowercase"><span aria-hidden="true">✓</span>包含小写字母</li>
+              <li data-password-rule="digit"><span aria-hidden="true">✓</span>包含数字</li>
+              <li data-password-rule="special"><span aria-hidden="true">✓</span>包含特殊字符</li>
+              <li data-password-rule="noWhitespace"><span aria-hidden="true">✓</span>无空格或控制字符</li>
+              <li data-password-rule="maxBytes"><span aria-hidden="true">✓</span>不超过 72 字节</li>
+            </ul>
+            <label for="newPasswordConfirmInput">确认新密码</label>
+            <input id="newPasswordConfirmInput" type="password" autocomplete="new-password" required />
+            <p class="password-confirmation" id="passwordConfirmation" aria-live="polite">请再次输入新密码</p>
+            <div class="auth-result" id="passwordChangeResult" hidden></div>
+            <button class="button primary auth-submit" id="passwordChangeButton" type="submit" disabled>保存新密码并进入系统</button>
+            <button class="auth-secondary-action" id="passwordChangeLogoutButton" type="button">退出并返回登录</button>
+          </form>
+
+          <div id="loginPanel" hidden>
+            <div class="auth-heading">
+              <span class="dialog-eyebrow">身份认证</span>
+              <h1>登录 Etcd Studio</h1>
+              <p>请选择管理员配置的登录方式。首次启动请使用终端输出的临时 admin 密码。</p>
+            </div>
+            <div class="login-provider-tabs" role="tablist" aria-label="登录方式">
+              <button id="localLoginTab" type="button" role="tab" aria-selected="true">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="7" r="3" /><path d="M4.5 17c.6-3.1 2.4-4.7 5.5-4.7s4.9 1.6 5.5 4.7" /></svg>
+                本地账户
+              </button>
+              <button id="ldapLoginTab" type="button" role="tab" aria-selected="false">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="4.5" r="2" /><circle cx="5" cy="14.5" r="2" /><circle cx="15" cy="14.5" r="2" /><path d="M10 6.5v3M5 12.5v-3h10v3" /></svg>
+                LDAP 登录
+              </button>
+            </div>
+            <form class="auth-form login-form" id="loginForm">
+              <div class="login-provider-caption" id="loginProviderCaption">使用 Etcd Studio 本地账户登录</div>
+              <label for="loginUsername">用户名</label>
+              <input id="loginUsername" type="text" autocomplete="username" required />
+              <label for="loginPassword">密码</label>
+              <input id="loginPassword" type="password" autocomplete="current-password" required />
+              <div class="auth-result" id="loginResult" hidden></div>
+              <button class="button primary auth-submit" id="loginButton" type="submit">本地账户登录</button>
+            </form>
+          </div>
+        </section>
+        <p class="auth-footnote">登录会话最长 12 小时。请通过 HTTPS 和可信反向代理对外提供服务。</p>
+      </div>
+    </main>
+
+    <header class="topbar" id="appTopbar" hidden>
+      <a class="brand" href="/" aria-label="Etcd Studio 首页">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 28 28" role="img">
+            <path d="M6 7.25C6 5.45 9.58 4 14 4s8 1.45 8 3.25S18.42 10.5 14 10.5 6 9.05 6 7.25Z" />
+            <path d="M6 7.25v6.5C6 15.55 9.58 17 14 17s8-1.45 8-3.25v-6.5" />
+            <path d="M6 13.75v6.5c0 1.8 3.58 3.25 8 3.25s8-1.45 8-3.25v-6.5" />
+          </svg>
+        </span>
+        <span>
+          <strong>Etcd Studio</strong>
+          <small>Key-Value Console</small>
+        </span>
+      </a>
+
+      <div class="topbar-actions">
+        <button class="connection" id="connectionButton" type="button" title="重新检测连接">
+          <span class="status-dot checking" id="statusDot"></span>
+          <span class="connection-copy">
+            <strong id="statusLabel">检测连接</strong>
+            <small id="endpointLabel">etcd</small>
+          </span>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.7 7.5A7 7 0 1 0 17 11" /><path d="m13.5 4 3.4 3.5L13.5 11" /></svg>
+        </button>
+        <div class="current-user">
+          <span class="current-user-avatar" id="currentUserAvatar">U</span>
+          <span><strong id="currentUserName">—</strong><small id="currentUserMeta">—</small></span>
+          <button id="logoutButton" type="button">退出</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-shell" id="appMain" hidden>
+      <section class="intro-row" id="kvIntro" aria-labelledby="pageTitle">
+        <div>
+          <p class="eyebrow">数据浏览器</p>
+          <h1 id="pageTitle">键值管理</h1>
+          <p>按前缀定位配置，查看版本信息，并安全地修改数据。</p>
+        </div>
+      </section>
+
+      <section class="cluster-strip" id="kvClusterStrip" aria-label="当前 etcd 集群">
+        <div class="cluster-switcher">
+          <span class="cluster-symbol" aria-hidden="true">
+            <svg viewBox="0 0 20 20"><ellipse cx="10" cy="5" rx="6" ry="2.5" /><path d="M4 5v5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V5M4 10v5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-5" /></svg>
+          </span>
+          <div>
+            <label for="clusterSelect">当前集群</label>
+            <select id="clusterSelect" aria-label="选择 etcd 集群">
+              <option value="">尚未配置集群</option>
+            </select>
+          </div>
+          <span class="cluster-count" id="clusterCount">0 个集群</span>
+        </div>
+        <div class="cluster-actions">
+          <button class="button secondary" id="userPageButton" type="button" hidden>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="7" cy="7" r="3" /><path d="M2.5 17c.5-3.1 2-4.7 4.5-4.7 1.3 0 2.3.4 3.1 1.1M13 8h4M15 6v4M12.5 17h5" /></svg>
+            用户管理
+          </button>
+          <button class="button secondary" id="auditLogButton" type="button">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3h10v14H5zM8 7h4M8 10h4M8 13h3" /><path d="m3 5 2-2M15 3l2 2" /></svg>
+            审计日志
+          </button>
+          <button class="button secondary" id="historySettingsButton" type="button" hidden>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12v12H4zM7 8h6M7 12h4" /></svg>
+            系统设置
+          </button>
+          <button class="button secondary" id="manageClustersButton" type="button" hidden>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3" /><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4" /></svg>
+            集群管理
+          </button>
+        </div>
+      </section>
+
+      <section class="query-bar" id="kvQueryBar" aria-label="Key 查询工具栏">
+        <form class="prefix-form" id="prefixForm">
+          <label for="prefixInput">Key 前缀</label>
+          <div class="search-control">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.75" /><path d="m13.25 13.25 3.5 3.5" /></svg>
+            <input id="prefixInput" name="prefix" type="text" autocomplete="off" placeholder="例如 /services/payment/，留空查询全部" />
+            <button class="clear-input" id="clearPrefixButton" type="button" aria-label="清空前缀" hidden>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 6 8 8M14 6l-8 8" /></svg>
+            </button>
+          </div>
+          <button class="button secondary" type="submit">查询</button>
+        </form>
+        <div class="query-actions">
+          <button class="icon-button" id="refreshButton" type="button" title="刷新当前页" aria-label="刷新当前页">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.25 8A6.5 6.5 0 1 0 16 12.6" /><path d="M13.25 4.5 16.5 8l-3.25 3.5" /></svg>
+          </button>
+          <button class="button primary" id="newKeyButton" type="button">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>
+            新建 Key
+          </button>
+        </div>
+      </section>
+
+      <section class="workspace" id="kvWorkspace" aria-label="Key-Value 工作区">
+        <aside class="key-browser" aria-label="Key 列表">
+          <div class="panel-heading">
+            <div>
+              <h2>Keys</h2>
+              <span id="resultCount">0 项</span>
+            </div>
+            <span class="prefix-chip" id="activePrefix">全部</span>
+          </div>
+
+          <div class="key-list" id="keyList" role="listbox" aria-label="Key 列表"></div>
+
+          <div class="list-state" id="listState">
+            <span class="spinner" aria-hidden="true"></span>
+            <p>正在读取 etcd…</p>
+          </div>
+
+          <footer class="pagination">
+            <button class="page-button" id="previousButton" type="button" disabled>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.5 5-5 5 5 5" /></svg>
+              上一页
+            </button>
+            <span id="pageLabel">第 1 页</span>
+            <button class="page-button" id="nextButton" type="button" disabled>
+              下一页
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7.5 5 5 5-5 5" /></svg>
+            </button>
+          </footer>
+        </aside>
+
+        <section class="editor-panel" aria-label="Value 编辑器">
+          <div class="empty-editor" id="emptyEditor">
+            <div class="empty-illustration" aria-hidden="true">
+              <svg viewBox="0 0 64 64">
+                <rect x="8" y="12" width="48" height="40" rx="8" />
+                <path d="m20 27 7 5-7 5M32 39h12" />
+                <circle cx="50" cy="18" r="2" />
+              </svg>
+            </div>
+            <h2>选择一个 Key 开始编辑</h2>
+            <p>从左侧列表查看已有数据，或新建一个 Key。</p>
+            <button class="button secondary" id="emptyNewKeyButton" type="button">新建 Key</button>
+          </div>
+
+          <form class="editor" id="editorForm" hidden>
+            <header class="editor-heading">
+              <div class="editor-title">
+                <span class="editor-mode" id="editorMode">编辑 Key</span>
+                <h2 id="editorKeyTitle">—</h2>
+              </div>
+              <div class="editor-actions">
+                <button class="rollback-button" id="rollbackButton" type="button" title="选择历史版本回滚" hidden>
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 7.5H10a5 5 0 1 1-4.1 7.85" /><path d="m7 4.5-3 3 3 3" /></svg>
+                  回滚
+                </button>
+                <button class="icon-button danger-icon" id="deleteButton" type="button" title="删除 Key" aria-label="删除 Key">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M8 3h4l1 3H7l1-3ZM6 6l.75 11h6.5L14 6M8.5 9v5M11.5 9v5" /></svg>
+                </button>
+              </div>
+            </header>
+
+            <div class="field-block">
+              <div class="field-label-row">
+                <label for="keyInput">Key</label>
+                <span class="field-note" id="keyEncodingLabel">UTF-8</span>
+              </div>
+              <div class="key-input-row">
+                <input class="code-input" id="keyInput" type="text" autocomplete="off" spellcheck="false" />
+                <button class="small-button" id="copyKeyInlineButton" type="button">复制</button>
+              </div>
+              <p class="field-help" id="keyHelp">Key 创建后不可重命名；如需更名，请新建并删除原 Key。</p>
+            </div>
+
+            <div class="field-block value-block">
+              <div class="field-label-row">
+                <label for="valueInput">Value</label>
+                <div class="encoding-control">
+                  <span>编码</span>
+                  <select id="encodingSelect" aria-label="Value 编码">
+                    <option value="utf8">UTF-8</option>
+                    <option value="base64">Base64</option>
+                  </select>
+                </div>
+              </div>
+              <textarea class="code-editor" id="valueInput" autocomplete="off" spellcheck="false" placeholder="输入 Value…"></textarea>
+              <div class="editor-status">
+                <span id="valueStats">0 字符 · 0 B</span>
+                <button class="text-button" id="copyValueButton" type="button">复制 Value</button>
+              </div>
+            </div>
+
+            <dl class="metadata" id="metadata">
+              <div><dt>创建版本</dt><dd id="createRevision">—</dd></div>
+              <div><dt>修改版本</dt><dd id="modRevision">—</dd></div>
+              <div><dt>版本次数</dt><dd id="versionValue">—</dd></div>
+              <div><dt>Lease</dt><dd id="leaseValue">—</dd></div>
+            </dl>
+
+            <footer class="editor-footer">
+              <p id="saveHint">保存时会校验修改版本，避免覆盖其他客户端的更新。</p>
+              <div>
+                <button class="button ghost" id="cancelButton" type="button">取消</button>
+                <button class="button primary save-button" id="saveButton" type="submit">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3h10l2 2v12H4V3Z" /><path d="M7 3v5h6V3M7 17v-5h6v5" /></svg>
+                  保存更改
+                </button>
+              </div>
+            </footer>
+          </form>
+        </section>
+      </section>
+
+      <section class="audit-page" id="auditPage" aria-labelledby="auditPageTitle" hidden>
+        <header class="intro-row audit-intro">
+          <div>
+            <p class="eyebrow">安全与治理</p>
+            <h1 id="auditPageTitle">审计日志</h1>
+            <p>查看谁在什么时候修改了什么。记录默认保留最近 <strong id="auditRetentionDays">90</strong> 天。</p>
+          </div>
+          <button class="button secondary" id="auditBackButton" type="button">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.5 5-5 5 5 5" /></svg>
+            返回键值管理
+          </button>
+        </header>
+
+        <div class="audit-identity-note">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16 5v4.5c0 3.8-2.55 6.45-6 8-3.45-1.55-6-4.2-6-8V5l6-2.5Z" /><path d="m7.5 10 1.6 1.6 3.6-4" /></svg>
+          <span>审计记录显示已登录的本地或 LDAP 用户；记录不会保存 Value 或密码。</span>
+        </div>
+
+        <section class="audit-card" aria-label="审计记录">
+          <form class="audit-filters" id="auditFilterForm">
+            <div>
+              <label for="auditClusterFilter">集群</label>
+              <select id="auditClusterFilter"><option value="">全部集群</option></select>
+            </div>
+            <div>
+              <label for="auditActionFilter">操作类型</label>
+              <select id="auditActionFilter">
+                <option value="">全部操作</option>
+                <optgroup label="Key 操作">
+                  <option value="key.create">新建 Key</option>
+                  <option value="key.update">修改 Key</option>
+                  <option value="key.delete">删除 Key</option>
+                  <option value="key.rollback">回滚 Key</option>
+                </optgroup>
+                <optgroup label="集群配置">
+                  <option value="cluster.create">新增集群</option>
+                  <option value="cluster.update">修改集群</option>
+                  <option value="cluster.delete">删除集群</option>
+                </optgroup>
+                <optgroup label="系统设置">
+                  <option value="history_storage.configure">初始化历史存储</option>
+                  <option value="history_retention.update">修改历史策略</option>
+                </optgroup>
+                <optgroup label="身份与用户">
+                  <option value="auth.bootstrap">初始化管理员</option>
+                  <option value="auth.login">用户登录</option>
+                  <option value="auth.logout">退出登录</option>
+                  <option value="auth.password.change">修改密码</option>
+                  <option value="auth.settings.update">修改认证设置</option>
+                  <option value="user.create">新增用户</option>
+                  <option value="user.update">修改用户</option>
+                  <option value="user.delete">删除用户</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="audit-date-field">
+              <label for="auditStartDate">日期范围</label>
+              <div class="audit-date-inputs">
+                <input id="auditStartDate" type="date" aria-label="开始日期" />
+                <span>至</span>
+                <input id="auditEndDate" type="date" aria-label="结束日期" />
+              </div>
+            </div>
+            <div class="audit-search-field">
+              <label for="auditSearchInput">操作者或对象</label>
+              <input id="auditSearchInput" type="search" autocomplete="off" placeholder="搜索用户、IP、Key 或集群" />
+            </div>
+            <button class="button secondary" type="submit">查询</button>
+            <button class="icon-button" id="auditRefreshButton" type="button" title="刷新审计日志" aria-label="刷新审计日志">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.25 8A6.5 6.5 0 1 0 16 12.6" /><path d="M13.25 4.5 16.5 8l-3.25 3.5" /></svg>
+            </button>
+          </form>
+
+          <div class="audit-table-wrap">
+            <table class="audit-table">
+              <thead><tr><th>时间</th><th>操作者</th><th>操作</th><th>对象</th><th>集群</th><th>详情</th></tr></thead>
+              <tbody id="auditTableBody"></tbody>
+            </table>
+            <div class="audit-state" id="auditState">
+              <span class="spinner" aria-hidden="true"></span>
+              <p>正在读取审计记录…</p>
+            </div>
+          </div>
+
+          <footer class="pagination audit-pagination">
+            <button class="page-button" id="auditPreviousButton" type="button" disabled>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.5 5-5 5 5 5" /></svg>上一页
+            </button>
+            <span id="auditPageLabel">第 1 页</span>
+            <button class="page-button" id="auditNextButton" type="button" disabled>
+              下一页<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7.5 5 5 5-5 5" /></svg>
+            </button>
+          </footer>
+        </section>
+      </section>
+
+      <section class="users-page" id="usersPage" aria-labelledby="usersPageTitle" hidden>
+        <header class="intro-row audit-intro">
+          <div>
+            <p class="eyebrow">访问控制</p>
+            <h1 id="usersPageTitle">用户与认证</h1>
+            <p>管理本地账户，并配置本地账户、LDAP 或双登录方式。</p>
+          </div>
+          <button class="button secondary" id="usersBackButton" type="button">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.5 5-5 5 5 5" /></svg>
+            返回键值管理
+          </button>
+        </header>
+
+        <form class="management-card auth-settings-card" id="authSettingsForm">
+          <header class="management-card-heading">
+            <div><h2>登录方式</h2><p>至少保留一种可用的登录方式，修改后立即生效。</p></div>
+            <span id="authConfiguredAt">—</span>
+          </header>
+          <fieldset class="auth-mode-options" aria-label="登录方式">
+            <label><input type="radio" name="authMode" value="local" /><span><strong>仅本地账户</strong><small>使用本页面维护的用户名和密码</small></span></label>
+            <label><input type="radio" name="authMode" value="ldap" /><span><strong>仅 LDAP</strong><small>使用企业目录账户登录</small></span></label>
+            <label><input type="radio" name="authMode" value="both" /><span><strong>本地账户 + LDAP</strong><small>登录页同时展示两个入口</small></span></label>
+          </fieldset>
+
+          <section class="ldap-settings" id="ldapSettingsFields" hidden>
+            <div class="section-heading-row"><div><h3>LDAP 连接</h3><p>推荐使用 LDAPS 或 StartTLS；普通 LDAP 会明文传输凭据。</p></div><span class="security-badge">密码不回显</span></div>
+            <div class="cluster-form-grid">
+              <div class="cluster-field"><label for="ldapHostInput">LDAP 地址 <span>必填</span></label><input id="ldapHostInput" type="text" placeholder="ldap.example.com" /></div>
+              <div class="cluster-field"><label for="ldapPortInput">端口</label><input id="ldapPortInput" type="number" min="1" max="65535" inputmode="numeric" /></div>
+              <div class="cluster-field"><label for="ldapTLSModeSelect">连接安全</label><select id="ldapTLSModeSelect"><option value="starttls">StartTLS（推荐）</option><option value="ldaps">LDAPS</option><option value="plain">普通 LDAP（不安全）</option></select></div>
+              <div class="cluster-field"><label for="ldapServerNameInput">TLS Server Name <span>可选</span></label><input id="ldapServerNameInput" type="text" placeholder="默认使用 LDAP 地址" /></div>
+              <div class="cluster-field full-field"><label for="ldapCAFileInput">自定义 CA 文件 <span>服务端路径，可选</span></label><input id="ldapCAFileInput" type="text" spellcheck="false" placeholder="/etc/etcd-studio/ldap-ca.pem" /></div>
+              <div class="cluster-field full-field"><label for="ldapBaseDNInput">Base DN <span>搜索模式必填</span></label><input id="ldapBaseDNInput" type="text" spellcheck="false" placeholder="dc=example,dc=com" /></div>
+              <div class="cluster-field"><label for="ldapBindDNInput">Bind DN <span>可选的只读查询账户</span></label><input id="ldapBindDNInput" type="text" autocomplete="username" placeholder="cn=reader,dc=example,dc=com" /></div>
+              <div class="cluster-field"><label for="ldapBindPasswordInput">Bind 密码 <span id="ldapBindPasswordHint">可选</span></label><input id="ldapBindPasswordInput" type="password" autocomplete="new-password" placeholder="留空保持不变" /></div>
+              <div class="cluster-field full-field"><label for="ldapUserFilterInput">用户过滤器 <span>必须包含 {{username}}</span></label><input id="ldapUserFilterInput" type="text" spellcheck="false" placeholder="(uid={{username}})" /></div>
+              <div class="cluster-field full-field"><label for="ldapUserDNTemplateInput">用户 DN 模板 <span>可选；填写后不执行目录搜索</span></label><input id="ldapUserDNTemplateInput" type="text" spellcheck="false" placeholder="uid={{username}},ou=people,dc=example,dc=com" /></div>
+              <div class="cluster-field"><label for="ldapUsernameAttributeInput">用户名属性</label><input id="ldapUsernameAttributeInput" type="text" value="uid" /></div>
+              <div class="cluster-field"><label for="ldapDisplayNameAttributeInput">显示名称属性</label><input id="ldapDisplayNameAttributeInput" type="text" value="cn" /></div>
+              <div class="cluster-field full-field"><label for="ldapAdminUsernamesInput">LDAP 管理员用户名 <span>每行一个</span></label><textarea id="ldapAdminUsernamesInput" rows="3" placeholder="ldap-admin"></textarea><p>名单内用户可进入本页面；其他 LDAP 用户为操作员。</p></div>
+            </div>
+            <div class="cluster-test-result" id="ldapTestResult" hidden></div>
+          </section>
+
+          <footer class="management-card-footer">
+            <span>LDAP Bind 密码写入 0600 的认证配置文件，接口只返回是否已配置。</span>
+            <div><button class="button secondary" id="testLDAPButton" type="button">测试 LDAP</button><button class="button primary" id="saveAuthSettingsButton" type="submit">保存登录设置</button></div>
+          </footer>
+        </form>
+
+        <section class="management-card local-users-card">
+          <header class="management-card-heading">
+            <div><h2>本地账户</h2><p>管理员可为操作员分配可访问的 etcd 集群；未分配时登录后不显示任何集群。</p></div>
+            <button class="button primary" id="addLocalUserButton" type="button">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>添加本地用户
+            </button>
+          </header>
+          <div class="users-table-wrap">
+            <table class="users-table"><thead><tr><th>用户</th><th>角色</th><th>集群权限</th><th>状态</th><th>更新时间</th><th></th></tr></thead><tbody id="localUsersTableBody"></tbody></table>
+            <div class="users-empty" id="localUsersEmpty" hidden>暂无本地账户</div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <dialog class="cluster-dialog user-editor-dialog" id="userEditorDialog">
+      <div class="cluster-dialog-shell">
+        <header class="cluster-dialog-heading">
+          <div><span class="dialog-eyebrow">本地账户</span><h2 id="userEditorTitle">添加本地用户</h2><p>密码只保存 bcrypt 哈希，不会通过接口返回。</p></div>
+          <button class="dialog-close" id="closeUserEditorButton" type="button" aria-label="关闭用户编辑"><svg viewBox="0 0 20 20"><path d="m6 6 8 8M14 6l-8 8" /></svg></button>
+        </header>
+        <form class="cluster-form" id="userEditorForm">
+          <div class="cluster-form-grid">
+            <div class="cluster-field full-field"><label for="localUsernameInput">用户名 <span>创建后不可修改</span></label><input id="localUsernameInput" type="text" maxlength="64" autocomplete="username" required /></div>
+            <div class="cluster-field full-field"><label for="localDisplayNameInput">显示名称</label><input id="localDisplayNameInput" type="text" maxlength="100" autocomplete="name" required /></div>
+            <div class="cluster-field"><label for="localRoleSelect">角色</label><select id="localRoleSelect"><option value="operator">操作员</option><option value="admin">管理员</option></select></div>
+            <div class="cluster-field"><label for="localPasswordInput">密码 <span id="localPasswordHint">至少 10 位强密码</span></label><input id="localPasswordInput" type="password" autocomplete="new-password" /><p>需包含大小写字母、数字和特殊字符，无空格或控制字符，且不超过 72 字节。</p></div>
+            <div class="cluster-permission-field" id="localClusterPermissionField">
+              <div class="cluster-permission-heading"><strong>集群权限</strong><span id="localClusterPermissionHint">未选择时登录后不显示任何集群</span></div>
+              <div class="cluster-permission-options" id="localClusterPermissions"></div>
+            </div>
+            <label class="user-active-option"><input id="localUserActiveInput" type="checkbox" checked /> 启用此账户</label>
+          </div>
+          <div class="cluster-test-result" id="userEditorResult" hidden></div>
+          <footer class="cluster-form-footer"><button class="button cluster-delete-button" id="deleteLocalUserButton" type="button" hidden>删除用户</button><div><button class="button ghost" id="cancelUserEditorButton" type="button">取消</button><button class="button primary" id="saveLocalUserButton" type="submit">保存用户</button></div></footer>
+        </form>
+      </div>
+    </dialog>
+
+    <dialog class="confirm-dialog" id="deleteLocalUserDialog">
+      <form method="dialog">
+        <span class="dialog-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8v5M12 16.5v.5" /><path d="M10.2 4.4 3.3 17a2 2 0 0 0 1.75 3h13.9a2 2 0 0 0 1.75-3L13.8 4.4a2.05 2.05 0 0 0-3.6 0Z" /></svg></span>
+        <h2>删除本地用户？</h2><p>用户 <code id="deleteLocalUsername"></code> 将无法再登录，已有会话立即失效。</p>
+        <div class="dialog-actions"><button class="button ghost" value="cancel">取消</button><button class="button danger" id="confirmDeleteLocalUserButton" value="confirm">确认删除</button></div>
+      </form>
+    </dialog>
+
+    <dialog class="confirm-dialog" id="deleteDialog">
+      <form method="dialog">
+        <span class="dialog-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 8v5M12 16.5v.5" /><path d="M10.2 4.4 3.3 17a2 2 0 0 0 1.75 3h13.9a2 2 0 0 0 1.75-3L13.8 4.4a2.05 2.05 0 0 0-3.6 0Z" /></svg>
+        </span>
+        <h2>删除这个 Key？</h2>
+        <p>此操作会立即从 etcd 删除 <code id="deleteKeyName"></code>，且无法撤销。</p>
+        <div class="dialog-actions">
+          <button class="button ghost" value="cancel">取消</button>
+          <button class="button danger" id="confirmDeleteButton" value="confirm">确认删除</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="confirm-dialog rollback-dialog" id="rollbackDialog">
+      <form method="dialog">
+        <span class="dialog-icon rollback-dialog-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M5 9h7a6 6 0 1 1-5 9.6" /><path d="m8 5-4 4 4 4" /></svg>
+        </span>
+        <h2>选择要回滚的版本</h2>
+        <p>为 <code id="rollbackKeyName"></code> 选择目标版本。确认后会恢复该 Value，并在 etcd 中生成一个新版本。</p>
+        <div class="rollback-workspace">
+          <section class="rollback-version-panel" aria-label="可回滚版本">
+            <div class="rollback-version-heading">
+              <span>历史版本</span>
+              <small>从新到旧</small>
+            </div>
+            <div class="rollback-version-list" id="rollbackVersionList"></div>
+            <button class="rollback-load-more" id="rollbackLoadMoreButton" type="button" hidden>加载更早版本</button>
+          </section>
+          <div class="rollback-preview">
+            <div>
+              <span>版本 <strong id="rollbackRevision">—</strong> · <strong id="rollbackSource">—</strong></span>
+              <small id="rollbackEncoding">—</small>
+            </div>
+            <pre id="rollbackValuePreview">请选择一个历史版本</pre>
+          </div>
+        </div>
+        <p class="rollback-note">确认时会再次校验当前版本；如果期间有人继续修改，回滚将自动终止。</p>
+        <div class="dialog-actions">
+          <button class="button ghost" value="cancel">取消</button>
+          <button class="button primary" id="confirmRollbackButton" value="confirm">确认回滚</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="cluster-dialog storage-dialog" id="historyStorageDialog">
+      <div class="cluster-dialog-shell">
+        <header class="cluster-dialog-heading">
+          <div>
+            <span class="dialog-eyebrow">首次启动</span>
+            <h2>选择 Value 历史存储</h2>
+            <p>历史独立于 etcd 保存；完成配置后才能修改、删除或回滚 Key。</p>
+          </div>
+        </header>
+
+        <form id="historyStorageForm" class="cluster-form">
+          <fieldset class="storage-options" aria-label="历史存储类型">
+            <label>
+              <input type="radio" name="historyStorageType" value="local" checked />
+              <span><strong>本地文件</strong><small>单实例或本地测试</small></span>
+            </label>
+            <label>
+              <input type="radio" name="historyStorageType" value="postgres" />
+              <span><strong>PostgreSQL</strong><small>共享数据库，推荐高可用部署</small></span>
+            </label>
+            <label>
+              <input type="radio" name="historyStorageType" value="mysql" />
+              <span><strong>MySQL</strong><small>复用现有 MySQL 基础设施</small></span>
+            </label>
+          </fieldset>
+
+          <div class="cluster-form-grid storage-fields" id="storageLocalFields">
+            <div class="cluster-field full-field">
+              <label for="storageLocalFileInput">历史文件路径 <span>服务端本地路径</span></label>
+              <input id="storageLocalFileInput" type="text" spellcheck="false" placeholder="/data/history.jsonl" />
+              <p>文件以 0600 权限保存。多实例部署不要选择本地文件。</p>
+            </div>
+          </div>
+
+          <div class="cluster-form-grid storage-fields" id="storageDatabaseFields" hidden>
+            <div class="cluster-field">
+              <label for="storageHostInput">数据库地址 <span>必填</span></label>
+              <input id="storageHostInput" type="text" autocomplete="off" placeholder="db.internal" />
+            </div>
+            <div class="cluster-field">
+              <label for="storagePortInput">端口 <span>必填</span></label>
+              <input id="storagePortInput" type="number" min="1" max="65535" inputmode="numeric" />
+            </div>
+            <div class="cluster-field full-field">
+              <label for="storageDatabaseInput">数据库名 <span>需要预先创建</span></label>
+              <input id="storageDatabaseInput" type="text" autocomplete="off" placeholder="etcd_studio" />
+            </div>
+            <div class="cluster-field">
+              <label for="storageUsernameInput">账号 <span>需要建表及读写权限</span></label>
+              <input id="storageUsernameInput" type="text" autocomplete="username" placeholder="etcd_studio" />
+            </div>
+            <div class="cluster-field">
+              <label for="storagePasswordInput">密码</label>
+              <input id="storagePasswordInput" type="password" autocomplete="new-password" placeholder="数据库密码" />
+            </div>
+            <div class="cluster-field full-field">
+              <label for="storageTLSModeSelect">TLS / SSL 模式</label>
+              <select id="storageTLSModeSelect"></select>
+            </div>
+          </div>
+
+          <div class="cluster-form-grid storage-retention-fields">
+            <div class="cluster-field full-field">
+              <label for="storageRetentionInput">历史存储每个 Key 保留版本数 <span>0 表示不限制</span></label>
+              <input id="storageRetentionInput" type="number" min="0" max="10000" value="100" inputmode="numeric" required />
+              <p>超过数量后优先删除最旧版本；默认保留最近 100 个版本。</p>
+            </div>
+          </div>
+
+          <p class="storage-security-note">数据库密码需要在服务重启后继续使用，因此会写入本机的 0600 配置文件；状态接口不会返回密码。数据库 Value 仍可能包含敏感配置，请启用磁盘加密和数据库访问控制。</p>
+          <div class="cluster-test-result" id="storageTestResult" hidden></div>
+
+          <footer class="cluster-form-footer storage-form-footer">
+            <span>存储类型保存后不能在页面直接切换，避免历史分散。</span>
+            <div>
+              <button class="button secondary" id="testStorageButton" type="button">测试连接</button>
+              <button class="button primary" id="saveStorageButton" type="submit">保存并继续</button>
+            </div>
+          </footer>
+        </form>
+      </div>
+    </dialog>
+
+    <dialog class="cluster-dialog settings-dialog" id="historySettingsDialog">
+      <div class="cluster-dialog-shell">
+        <header class="cluster-dialog-heading">
+          <div>
+            <span class="dialog-eyebrow">系统配置</span>
+            <h2>系统设置</h2>
+            <p>查看首次初始化的历史存储信息，并维护历史保留策略。</p>
+          </div>
+          <button class="dialog-close" id="closeHistorySettingsButton" type="button" aria-label="关闭系统设置">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 6 8 8M14 6l-8 8" /></svg>
+          </button>
+        </header>
+
+        <form id="historySettingsForm" class="settings-form">
+          <section class="settings-section" aria-labelledby="historyStorageSettingsTitle">
+            <div class="settings-section-heading">
+              <div>
+                <h3 id="historyStorageSettingsTitle">历史存储</h3>
+                <p>存储类型初始化后锁定，避免历史记录分散。</p>
+              </div>
+              <span class="settings-storage-badge" id="historyStorageTypeLabel">—</span>
+            </div>
+            <dl class="settings-detail-grid">
+              <div>
+                <dt>初始化时间</dt>
+                <dd id="historyConfiguredAt">—</dd>
+              </div>
+              <div id="historyLocalFileRow">
+                <dt>历史文件</dt>
+                <dd id="historyLocalFile">—</dd>
+              </div>
+              <div id="historyDatabaseHostRow" hidden>
+                <dt>数据库地址</dt>
+                <dd id="historyDatabaseHost">—</dd>
+              </div>
+              <div id="historyDatabaseNameRow" hidden>
+                <dt>数据库名</dt>
+                <dd id="historyDatabaseName">—</dd>
+              </div>
+              <div id="historyDatabaseUsernameRow" hidden>
+                <dt>账号</dt>
+                <dd id="historyDatabaseUsername">—</dd>
+              </div>
+              <div id="historyDatabaseTLSRow" hidden>
+                <dt>TLS / SSL</dt>
+                <dd id="historyDatabaseTLS">—</dd>
+              </div>
+              <div id="historyDatabasePasswordRow" hidden>
+                <dt>密码</dt>
+                <dd id="historyDatabasePassword">—</dd>
+              </div>
+            </dl>
+            <p class="settings-security-note" id="historyDatabaseSecurityNote" hidden>数据库密码仅显示是否已配置，页面和状态接口都不会返回密码内容。</p>
+          </section>
+
+          <section class="settings-section retention-settings-section" aria-labelledby="historyRetentionTitle">
+            <div class="settings-section-heading">
+              <div>
+                <h3 id="historyRetentionTitle">历史保留策略</h3>
+                <p>策略按集群和 Key 分别计算。</p>
+              </div>
+            </div>
+            <div class="cluster-field retention-setting-field">
+              <label for="historyRetentionInput">历史存储每个 Key 最多保留版本数 <span>0 表示全部保留</span></label>
+              <input id="historyRetentionInput" type="number" min="0" max="10000" inputmode="numeric" required />
+              <p>调小会立即清理独立历史存储中的旧版本；etcd 自身 MVCC 历史仍由 etcd compaction 控制。</p>
+            </div>
+            <div class="cluster-test-result" id="historyRetentionResult" hidden></div>
+          </section>
+
+          <footer class="cluster-form-footer settings-footer">
+            <span>历史存储连接信息为只读，密码不会回显。</span>
+            <button class="button primary" id="saveHistorySettingsButton" type="submit">保存策略</button>
+          </footer>
+        </form>
+      </div>
+    </dialog>
+
+    <dialog class="cluster-dialog" id="clusterDialog">
+      <div class="cluster-dialog-shell">
+        <header class="cluster-dialog-heading">
+          <div>
+            <span class="dialog-eyebrow">连接配置</span>
+            <h2 id="clusterDialogTitle">添加 etcd 集群</h2>
+            <p>一个配置对应一个独立集群；多个 Endpoint 应属于同一个集群。</p>
+          </div>
+          <button class="dialog-close" id="closeClusterDialogButton" type="button" aria-label="关闭集群管理">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 6 8 8M14 6l-8 8" /></svg>
+          </button>
+        </header>
+
+        <form id="clusterForm" class="cluster-form">
+          <div class="cluster-form-grid">
+            <div class="cluster-field full-field">
+              <label for="clusterNameInput">集群名称 <span>必填</span></label>
+              <input id="clusterNameInput" type="text" maxlength="80" autocomplete="off" placeholder="例如 生产环境 / 华东测试集群" />
+            </div>
+
+            <div class="cluster-field full-field">
+              <label for="clusterEndpointsInput">Endpoints <span>每行一个</span></label>
+              <textarea id="clusterEndpointsInput" rows="3" spellcheck="false" placeholder="https://etcd-1.internal:2379&#10;https://etcd-2.internal:2379"></textarea>
+              <p>这里的多个地址用于同一集群的高可用连接，不要混入其他集群。</p>
+            </div>
+
+            <div class="cluster-field">
+              <label for="clusterUsernameInput">用户名 <span>可选</span></label>
+              <input id="clusterUsernameInput" type="text" autocomplete="username" placeholder="etcd 用户名" />
+            </div>
+            <div class="cluster-field">
+              <label for="clusterPasswordInput">密码 <span id="passwordFieldHint">可选</span></label>
+              <input id="clusterPasswordInput" type="password" autocomplete="new-password" placeholder="etcd 密码" />
+              <label class="clear-password-option" id="clearPasswordOption" hidden>
+                <input id="clearPasswordCheckbox" type="checkbox" /> 清除已保存的密码
+              </label>
+            </div>
+          </div>
+
+          <details class="tls-section">
+            <summary>
+              <span>TLS / mTLS</span>
+              <small>可选的服务端文件路径</small>
+            </summary>
+            <div class="cluster-form-grid tls-fields">
+              <div class="cluster-field full-field">
+                <label for="clusterCAInput">CA 证书路径</label>
+                <input id="clusterCAInput" type="text" spellcheck="false" placeholder="/etc/etcd/pki/ca.crt" />
+              </div>
+              <div class="cluster-field">
+                <label for="clusterCertInput">客户端证书路径</label>
+                <input id="clusterCertInput" type="text" spellcheck="false" placeholder="/etc/etcd/pki/client.crt" />
+              </div>
+              <div class="cluster-field">
+                <label for="clusterKeyInput">客户端私钥路径</label>
+                <input id="clusterKeyInput" type="text" spellcheck="false" placeholder="/etc/etcd/pki/client.key" />
+              </div>
+            </div>
+          </details>
+
+          <div class="cluster-test-result" id="clusterTestResult" hidden></div>
+
+          <footer class="cluster-form-footer">
+            <button class="button cluster-delete-button" id="deleteClusterButton" type="button" hidden>删除配置</button>
+            <div>
+              <button class="button ghost" id="addAnotherClusterButton" type="button">添加新集群</button>
+              <button class="button secondary" id="testClusterButton" type="button">测试连接</button>
+              <button class="button primary" id="saveClusterButton" type="submit">保存集群</button>
+            </div>
+          </footer>
+        </form>
+      </div>
+    </dialog>
+
+    <dialog class="confirm-dialog" id="deleteClusterDialog">
+      <form method="dialog">
+        <span class="dialog-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 8v5M12 16.5v.5" /><path d="M10.2 4.4 3.3 17a2 2 0 0 0 1.75 3h13.9a2 2 0 0 0 1.75-3L13.8 4.4a2.05 2.05 0 0 0-3.6 0Z" /></svg>
+        </span>
+        <h2>删除集群配置？</h2>
+        <p>只会删除 Etcd Studio 中的 <code id="deleteClusterName"></code> 连接配置，不会删除 etcd 中的任何数据。</p>
+        <div class="dialog-actions">
+          <button class="button ghost" value="cancel">取消</button>
+          <button class="button danger" id="confirmDeleteClusterButton" value="confirm">删除配置</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+.git
+.gitignore
+.env
+.env.*
+bin
+data
+coverage.out
+README.md

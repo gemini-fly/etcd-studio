@@ -1,0 +1,48 @@
+name: Bug 报告
+description: 报告可重复的功能问题
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: 请勿在公开 Issue 中提交密码、Token、证书、etcd Value、数据库内容或日志中的敏感信息。
+  - type: input
+    id: version
+    attributes:
+      label: Etcd Studio 版本
+      placeholder: 版本号、Git commit 或镜像标签
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 运行环境
+      description: 操作系统、Go/容器版本、etcd 版本、历史存储类型；请移除地址和凭据。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 重现步骤
+      description: 提供最小、确定的重现步骤。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+    validations:
+      required: true
+  - type: checkboxes
+    id: security
+    attributes:
+      label: 安全确认
+      options:
+        - label: 这不是安全漏洞；安全问题将通过仓库 Security 页面私密报告。
+          required: true
