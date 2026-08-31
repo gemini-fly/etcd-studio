@@ -50,14 +50,25 @@ func TestDatabaseHistoryAuditIntegration(t *testing.T) {
 				t.Fatal(err)
 			}
 			event := AuditEvent{
-				ID: id, OccurredAt: time.Now().UTC(), Actor: "integration-user", ActorType: "authenticated_user",
+				ID: id, OccurredAt: time.Now().UTC(), Actor: "integration-user", ActorType: "local",
 				Action: "key.update", ResourceType: "key", ClusterID: "cluster-1", ClusterName: "集成测试",
 				Target: "/integration/audit", Detail: "保存为 etcd 修订版本 #1", Result: "success",
 			}
 			if err := history.SaveAudit(event); err != nil {
 				t.Fatal(err)
 			}
-			page, err := history.ListAudit(AuditQuery{Since: time.Now().Add(-time.Hour), Limit: 10, Search: "integration-user"})
+			ldapID, err := newAuditID()
+			if err != nil {
+				t.Fatal(err)
+			}
+			ldapEvent := event
+			ldapEvent.ID = ldapID
+			ldapEvent.ActorType = "ldap"
+			ldapEvent.Target = "/integration/ldap-audit"
+			if err := history.SaveAudit(ldapEvent); err != nil {
+				t.Fatal(err)
+			}
+			page, err := history.ListAudit(AuditQuery{Since: time.Now().Add(-time.Hour), Limit: 10, Actor: "integration-user", ActorType: "local"})
 			if err != nil {
 				t.Fatal(err)
 			}

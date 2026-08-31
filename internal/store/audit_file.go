@@ -289,6 +289,12 @@ func auditMatches(event AuditEvent, query AuditQuery) bool {
 	if query.ClusterID != "" && event.ClusterID != query.ClusterID {
 		return false
 	}
+	if query.Actor != "" && event.Actor != query.Actor {
+		return false
+	}
+	if query.ActorType != "" && event.ActorType != query.ActorType {
+		return false
+	}
 	if query.Action != "" && event.Action != query.Action {
 		return false
 	}

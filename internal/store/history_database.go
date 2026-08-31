@@ -115,7 +115,7 @@ func (h *DatabaseHistory) ListAudit(query AuditQuery) (AuditPage, error) {
 	}
 	statement := `SELECT id, occurred_at, actor, actor_type, client_ip, action, resource_type,
 		cluster_id, cluster_name, target, detail, result FROM etcd_studio_audit_log`
-	conditions := make([]string, 0, 5)
+	conditions := make([]string, 0, 7)
 	arguments := make([]any, 0, 10)
 	bind := func(value any) string {
 		arguments = append(arguments, value)
@@ -132,6 +132,12 @@ func (h *DatabaseHistory) ListAudit(query AuditQuery) (AuditPage, error) {
 	}
 	if query.ClusterID != "" {
 		conditions = append(conditions, "cluster_id = "+bind(query.ClusterID))
+	}
+	if query.Actor != "" {
+		conditions = append(conditions, "actor = "+bind(query.Actor))
+	}
+	if query.ActorType != "" {
+		conditions = append(conditions, "actor_type = "+bind(query.ActorType))
 	}
 	if query.Action != "" {
 		conditions = append(conditions, "action = "+bind(query.Action))

@@ -337,6 +337,13 @@ func (s *Server) handleListAudit(w http.ResponseWriter, r *http.Request) {
 		if !s.requireClusterAccess(w, r, query.ClusterID) {
 			return
 		}
+		principal, ok := authPrincipalFromContext(r.Context())
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "authentication_required", "请重新登录")
+			return
+		}
+		query.Actor = principal.Username
+		query.ActorType = principal.Provider
 	}
 	query.Since, query.Until, err = parseAuditTimeRange(r.URL.Query().Get("from"), r.URL.Query().Get("to"))
 	if err != nil {

@@ -524,7 +524,8 @@ func TestLocalOperatorCanUseWorkspaceButCannotManageUsers(t *testing.T) {
 	allowedAudit.AddCookie(operatorCookie)
 	allowedAuditRecorder := httptest.NewRecorder()
 	server.ServeHTTP(allowedAuditRecorder, allowedAudit)
-	if allowedAuditRecorder.Code != http.StatusOK || history.auditQuery.ClusterID != "cluster-1" {
+	if allowedAuditRecorder.Code != http.StatusOK || history.auditQuery.ClusterID != "cluster-1" ||
+		history.auditQuery.Actor != "operator" || history.auditQuery.ActorType != auth.ProviderLocal {
 		t.Fatalf("assigned cluster audit status = %d, body = %s", allowedAuditRecorder.Code, allowedAuditRecorder.Body.String())
 	}
 	for _, path := range []string{"/api/v1/audit", "/api/v1/audit?cluster_id=cluster-2"} {
@@ -831,6 +832,9 @@ func TestAuditAPIListsEventsAndReturnsRetentionPolicy(t *testing.T) {
 	}
 	if len(response.Items) != 1 || response.Items[0].Actor != "alice" || response.RetentionDays != 90 || response.NextCursor == "" {
 		t.Fatalf("response = %#v", response)
+	}
+	if history.auditQuery.Actor != "" || history.auditQuery.ActorType != "" {
+		t.Fatalf("administrator audit query unexpectedly restricted = %#v", history.auditQuery)
 	}
 }
 
@@ -1244,6 +1248,9 @@ func TestEmbeddedPageAndSecurityHeaders(t *testing.T) {
 	if !bytes.Contains(recorder.Body.Bytes(), []byte(`id="validateJSONButton"`)) ||
 		!bytes.Contains(recorder.Body.Bytes(), []byte(`id="jsonValidationResult"`)) {
 		t.Fatal("embedded editor does not expose JSON validation controls")
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte("操作员仅可查看本人在已授权集群中的操作")) {
+		t.Fatal("embedded audit page does not explain operator audit visibility")
 	}
 	if recorder.Header().Get("Content-Security-Policy") == "" {
 		t.Fatal("missing Content-Security-Policy header")

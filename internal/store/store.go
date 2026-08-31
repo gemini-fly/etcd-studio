@@ -83,6 +83,8 @@ type AuditQuery struct {
 	BeforeID  string
 	Limit     int
 	ClusterID string
+	Actor     string
+	ActorType string
 	Action    string
 	Search    string
 }

@@ -16,9 +16,10 @@ func TestFileAuditPersistsFiltersAndPrunesEvents(t *testing.T) {
 	}
 	now := time.Date(2026, 8, 31, 10, 0, 0, 0, time.UTC)
 	events := []AuditEvent{
-		{ID: "00000000000000000000000000000001", OccurredAt: now.AddDate(0, 0, -91), Actor: "old-user", ActorType: "authenticated_user", Action: "key.update", ResourceType: "key", ClusterID: "cluster-1", ClusterName: "生产", Target: "/old", Result: "success"},
-		{ID: "00000000000000000000000000000002", OccurredAt: now.Add(-time.Hour), Actor: "alice", ActorType: "authenticated_user", Action: "key.update", ResourceType: "key", ClusterID: "cluster-1", ClusterName: "生产", Target: "/feature", Detail: "修订版本 #8", Result: "success"},
-		{ID: "00000000000000000000000000000003", OccurredAt: now, Actor: "bob", ActorType: "authenticated_user", Action: "cluster.create", ResourceType: "cluster", ClusterID: "cluster-2", ClusterName: "测试", Target: "测试", Result: "success"},
+		{ID: "00000000000000000000000000000001", OccurredAt: now.AddDate(0, 0, -91), Actor: "old-user", ActorType: "local", Action: "key.update", ResourceType: "key", ClusterID: "cluster-1", ClusterName: "生产", Target: "/old", Result: "success"},
+		{ID: "00000000000000000000000000000002", OccurredAt: now.Add(-time.Hour), Actor: "alice", ActorType: "local", Action: "key.update", ResourceType: "key", ClusterID: "cluster-1", ClusterName: "生产", Target: "/feature", Detail: "修订版本 #8", Result: "success"},
+		{ID: "00000000000000000000000000000003", OccurredAt: now, Actor: "bob", ActorType: "local", Action: "cluster.create", ResourceType: "cluster", ClusterID: "cluster-2", ClusterName: "测试", Target: "测试", Result: "success"},
+		{ID: "00000000000000000000000000000004", OccurredAt: now.Add(2 * time.Hour), Actor: "alice", ActorType: "ldap", Action: "key.update", ResourceType: "key", ClusterID: "cluster-1", ClusterName: "生产", Target: "/ldap-only", Result: "success"},
 	}
 	for _, event := range events {
 		if err := audit.SaveAudit(event); err != nil {
@@ -31,6 +32,13 @@ func TestFileAuditPersistsFiltersAndPrunesEvents(t *testing.T) {
 	}
 	if len(page.Events) != 1 || page.Events[0].Actor != "alice" {
 		t.Fatalf("filtered events = %#v", page.Events)
+	}
+	page, err = audit.ListAudit(AuditQuery{Limit: 10, ClusterID: "cluster-1", Actor: "alice", ActorType: "local"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Events) != 1 || page.Events[0].Actor != "alice" || page.Events[0].ActorType != "local" {
+		t.Fatalf("identity-filtered events = %#v", page.Events)
 	}
 	page, err = audit.ListAudit(AuditQuery{Limit: 10, Since: now.Add(-30 * time.Minute), Until: now.Add(30 * time.Minute)})
 	if err != nil {
@@ -55,7 +63,7 @@ func TestFileAuditPersistsFiltersAndPrunesEvents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(page.Events) != 2 || page.Events[0].Actor != "bob" || page.Events[1].Actor != "alice" {
+	if len(page.Events) != 3 || page.Events[0].ActorType != "ldap" || page.Events[1].Actor != "bob" || page.Events[2].ActorType != "local" {
 		t.Fatalf("reloaded events = %#v", page.Events)
 	}
 }
