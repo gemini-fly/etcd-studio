@@ -8,8 +8,9 @@ import (
 
 func TestFileAuditPersistsFiltersAndPrunesEvents(t *testing.T) {
 	t.Parallel()
-	filePath := filepath.Join(t.TempDir(), "audit.jsonl")
-	audit, err := NewFileAudit(filePath)
+	directory := t.TempDir()
+	filePath := filepath.Join(directory, "audit.jsonl")
+	audit, err := NewFileAudit(filePath, directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +46,7 @@ func TestFileAuditPersistsFiltersAndPrunesEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reopened, err := NewFileAudit(filePath)
+	reopened, err := NewFileAudit(filePath, directory)
 	if err != nil {
 		t.Fatal(err)
 	}

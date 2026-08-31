@@ -58,10 +58,14 @@ func NewHistoryManager(configFile, defaultLocalFile string, connectTimeout time.
 	if connectTimeout <= 0 {
 		return nil, errors.New("history storage connection timeout must be positive")
 	}
+	localFileRoot := filepath.Dir(defaultLocalFile)
+	if err := os.MkdirAll(localFileRoot, 0o700); err != nil {
+		return nil, fmt.Errorf("create local history root: %w", err)
+	}
 	manager := &HistoryManager{
 		configFile:        configFile,
 		defaultLocalFile:  defaultLocalFile,
-		localFileRoot:     filepath.Dir(defaultLocalFile),
+		localFileRoot:     localFileRoot,
 		connectTimeout:    connectTimeout,
 		retentionVersions: defaultRetentionVersions,
 	}

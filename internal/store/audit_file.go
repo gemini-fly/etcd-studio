@@ -37,13 +37,9 @@ type FileAudit struct {
 	closeErr  error
 }
 
-func NewFileAudit(filePath string, managedRoots ...string) (*FileAudit, error) {
+func NewFileAudit(filePath, managedRoot string) (*FileAudit, error) {
 	if strings.TrimSpace(filePath) == "" {
 		return nil, errors.New("audit file path cannot be empty")
-	}
-	managedRoot := filepath.Dir(filePath)
-	if len(managedRoots) > 0 {
-		managedRoot = managedRoots[0]
 	}
 	file, authorizedPath, err := safefile.OpenFile(managedRoot, filePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o600)
 	if err != nil {

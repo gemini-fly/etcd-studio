@@ -17,9 +17,6 @@ func OpenFile(rootDirectory, candidate string, flag int, permission os.FileMode)
 	if err != nil {
 		return nil, "", err
 	}
-	if err := os.MkdirAll(rootPath, 0o700); err != nil {
-		return nil, "", fmt.Errorf("create managed file root: %w", err)
-	}
 	root, err := os.OpenRoot(rootPath)
 	if err != nil {
 		return nil, "", fmt.Errorf("open managed file root: %w", err)

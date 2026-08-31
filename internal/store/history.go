@@ -48,13 +48,9 @@ type FileHistory struct {
 	closeErr  error
 }
 
-func NewFileHistory(filePath string, managedRoots ...string) (*FileHistory, error) {
+func NewFileHistory(filePath, managedRoot string) (*FileHistory, error) {
 	if strings.TrimSpace(filePath) == "" {
 		return nil, errors.New("history file path cannot be empty")
-	}
-	managedRoot := filepath.Dir(filePath)
-	if len(managedRoots) > 0 {
-		managedRoot = managedRoots[0]
 	}
 	file, authorizedPath, err := safefile.OpenFile(managedRoot, filePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o600)
 	if err != nil {

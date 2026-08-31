@@ -10,8 +10,9 @@ import (
 
 func TestFileHistoryPersistsBinarySnapshotsAndFindsLatestBeforeRevision(t *testing.T) {
 	t.Parallel()
-	filePath := filepath.Join(t.TempDir(), "nested", "history.jsonl")
-	history, err := NewFileHistory(filePath)
+	directory := t.TempDir()
+	filePath := filepath.Join(directory, "nested", "history.jsonl")
+	history, err := NewFileHistory(filePath, directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +46,7 @@ func TestFileHistoryPersistsBinarySnapshotsAndFindsLatestBeforeRevision(t *testi
 	if got := info.Mode().Perm(); got != 0o600 {
 		t.Fatalf("history permissions = %o, want 600", got)
 	}
-	reopened, err := NewFileHistory(filePath)
+	reopened, err := NewFileHistory(filePath, directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,8 +77,9 @@ func TestFileHistoryPersistsBinarySnapshotsAndFindsLatestBeforeRevision(t *testi
 
 func TestFileHistoryDiscardsPartialTrailingRecord(t *testing.T) {
 	t.Parallel()
-	filePath := filepath.Join(t.TempDir(), "history.jsonl")
-	history, err := NewFileHistory(filePath)
+	directory := t.TempDir()
+	filePath := filepath.Join(directory, "history.jsonl")
+	history, err := NewFileHistory(filePath, directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +101,7 @@ func TestFileHistoryDiscardsPartialTrailingRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reopened, err := NewFileHistory(filePath)
+	reopened, err := NewFileHistory(filePath, directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,8 +117,9 @@ func TestFileHistoryDiscardsPartialTrailingRecord(t *testing.T) {
 
 func TestFileHistoryPrunesNewestVersionsPerKeyAndPersistsRewrite(t *testing.T) {
 	t.Parallel()
-	filePath := filepath.Join(t.TempDir(), "history.jsonl")
-	history, err := NewFileHistory(filePath)
+	directory := t.TempDir()
+	filePath := filepath.Join(directory, "history.jsonl")
+	history, err := NewFileHistory(filePath, directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +144,7 @@ func TestFileHistoryPrunesNewestVersionsPerKeyAndPersistsRewrite(t *testing.T) {
 	if err := history.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := NewFileHistory(filePath)
+	reopened, err := NewFileHistory(filePath, directory)
 	if err != nil {
 		t.Fatal(err)
 	}
