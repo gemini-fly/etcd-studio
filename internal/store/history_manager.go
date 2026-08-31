@@ -35,6 +35,7 @@ type HistoryManager struct {
 	mu                sync.RWMutex
 	configFile        string
 	defaultLocalFile  string
+	localFileRoot     string
 	connectTimeout    time.Duration
 	configuredAt      time.Time
 	config            HistoryStorageInput
@@ -60,6 +61,7 @@ func NewHistoryManager(configFile, defaultLocalFile string, connectTimeout time.
 	manager := &HistoryManager{
 		configFile:        configFile,
 		defaultLocalFile:  defaultLocalFile,
+		localFileRoot:     filepath.Dir(defaultLocalFile),
 		connectTimeout:    connectTimeout,
 		retentionVersions: defaultRetentionVersions,
 	}
@@ -104,7 +106,7 @@ func (m *HistoryManager) Test(ctx context.Context, input HistoryStorageInput) er
 	if err != nil {
 		return err
 	}
-	backend, err := openHistoryBackend(ctx, normalized, m.connectTimeout, false)
+	backend, err := openHistoryBackend(ctx, normalized, m.connectTimeout, false, m.localFileRoot)
 	if err != nil {
 		return err
 	}
@@ -126,7 +128,7 @@ func (m *HistoryManager) Configure(ctx context.Context, input HistoryStorageInpu
 	if m.backend != nil {
 		return ErrHistoryConfigured
 	}
-	backend, err := openHistoryBackend(ctx, normalized, m.connectTimeout, true)
+	backend, err := openHistoryBackend(ctx, normalized, m.connectTimeout, true, m.localFileRoot)
 	if err != nil {
 		return err
 	}
@@ -326,7 +328,7 @@ func (m *HistoryManager) load() error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), m.connectTimeout)
 	defer cancel()
-	backend, err := openHistoryBackend(ctx, normalized, m.connectTimeout, true)
+	backend, err := openHistoryBackend(ctx, normalized, m.connectTimeout, true, m.localFileRoot)
 	if err != nil {
 		return fmt.Errorf("open configured history storage: %w", err)
 	}
@@ -467,9 +469,9 @@ func validateRetentionVersions(value int) error {
 	return nil
 }
 
-func openHistoryBackend(ctx context.Context, config HistoryStorageInput, connectTimeout time.Duration, initialize bool) (historyBackend, error) {
+func openHistoryBackend(ctx context.Context, config HistoryStorageInput, connectTimeout time.Duration, initialize bool, localFileRoot string) (historyBackend, error) {
 	if config.Type == HistoryStorageLocal {
-		return newLocalHistoryBackend(config.LocalFile)
+		return newLocalHistoryBackend(config.LocalFile, localFileRoot)
 	}
 	return NewDatabaseHistory(ctx, config, connectTimeout, initialize)
 }

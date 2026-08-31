@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gemini-fly/etcd-studio/internal/safefile"
 )
 
 const (
@@ -39,21 +41,22 @@ type historyRecord struct {
 type FileHistory struct {
 	mu        sync.RWMutex
 	file      *os.File
+	filePath  string
 	entries   map[string][]ValueSnapshot
 	seen      map[string]struct{}
 	closeOnce sync.Once
 	closeErr  error
 }
 
-func NewFileHistory(filePath string) (*FileHistory, error) {
+func NewFileHistory(filePath string, managedRoots ...string) (*FileHistory, error) {
 	if strings.TrimSpace(filePath) == "" {
 		return nil, errors.New("history file path cannot be empty")
 	}
-	directory := filepath.Dir(filePath)
-	if err := os.MkdirAll(directory, 0o700); err != nil {
-		return nil, fmt.Errorf("create history directory: %w", err)
+	managedRoot := filepath.Dir(filePath)
+	if len(managedRoots) > 0 {
+		managedRoot = managedRoots[0]
 	}
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o600)
+	file, authorizedPath, err := safefile.OpenFile(managedRoot, filePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("open history file: %w", err)
 	}
@@ -65,9 +68,10 @@ func NewFileHistory(filePath string) (*FileHistory, error) {
 		return cleanup(fmt.Errorf("secure history file permissions: %w", err))
 	}
 	history := &FileHistory{
-		file:    file,
-		entries: make(map[string][]ValueSnapshot),
-		seen:    make(map[string]struct{}),
+		file:     file,
+		filePath: authorizedPath,
+		entries:  make(map[string][]ValueSnapshot),
+		seen:     make(map[string]struct{}),
 	}
 	if err := history.load(); err != nil {
 		return cleanup(err)
@@ -269,7 +273,7 @@ func (h *FileHistory) addLocked(snapshot ValueSnapshot) {
 }
 
 func (h *FileHistory) replaceEntriesLocked(updated map[string][]ValueSnapshot) error {
-	filePath := h.file.Name()
+	filePath := h.filePath
 	directory := filepath.Dir(filePath)
 	temporary, err := os.CreateTemp(directory, ".history-prune-*.tmp")
 	if err != nil {

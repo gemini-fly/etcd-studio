@@ -12,12 +12,12 @@ type localHistoryBackend struct {
 	audit *FileAudit
 }
 
-func newLocalHistoryBackend(historyFile string) (*localHistoryBackend, error) {
-	history, err := NewFileHistory(historyFile)
+func newLocalHistoryBackend(historyFile, managedRoot string) (*localHistoryBackend, error) {
+	history, err := NewFileHistory(historyFile, managedRoot)
 	if err != nil {
 		return nil, err
 	}
-	audit, err := NewFileAudit(auditFilePath(historyFile))
+	audit, err := NewFileAudit(auditFilePath(historyFile), managedRoot)
 	if err != nil {
 		_ = history.Close()
 		return nil, err

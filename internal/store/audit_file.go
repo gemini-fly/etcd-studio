@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gemini-fly/etcd-studio/internal/safefile"
 )
 
 const (
@@ -29,19 +31,21 @@ type auditRecord struct {
 type FileAudit struct {
 	mu        sync.RWMutex
 	file      *os.File
+	filePath  string
 	events    []AuditEvent
 	closeOnce sync.Once
 	closeErr  error
 }
 
-func NewFileAudit(filePath string) (*FileAudit, error) {
+func NewFileAudit(filePath string, managedRoots ...string) (*FileAudit, error) {
 	if strings.TrimSpace(filePath) == "" {
 		return nil, errors.New("audit file path cannot be empty")
 	}
-	if err := os.MkdirAll(filepath.Dir(filePath), 0o700); err != nil {
-		return nil, fmt.Errorf("create audit directory: %w", err)
+	managedRoot := filepath.Dir(filePath)
+	if len(managedRoots) > 0 {
+		managedRoot = managedRoots[0]
 	}
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o600)
+	file, authorizedPath, err := safefile.OpenFile(managedRoot, filePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("open audit file: %w", err)
 	}
@@ -52,7 +56,7 @@ func NewFileAudit(filePath string) (*FileAudit, error) {
 	if err := file.Chmod(0o600); err != nil {
 		return cleanup(fmt.Errorf("secure audit file permissions: %w", err))
 	}
-	audit := &FileAudit{file: file, events: make([]AuditEvent, 0)}
+	audit := &FileAudit{file: file, filePath: authorizedPath, events: make([]AuditEvent, 0)}
 	if err := audit.load(); err != nil {
 		return cleanup(err)
 	}
@@ -211,7 +215,7 @@ func (a *FileAudit) load() error {
 }
 
 func (a *FileAudit) replaceLocked(events []AuditEvent) error {
-	filePath := a.file.Name()
+	filePath := a.filePath
 	temporary, err := os.CreateTemp(filepath.Dir(filePath), ".audit-prune-*.tmp")
 	if err != nil {
 		return fmt.Errorf("create pruned audit file: %w", err)

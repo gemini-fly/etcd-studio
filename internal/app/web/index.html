@@ -417,7 +417,7 @@
               <div class="cluster-field"><label for="ldapPortInput">端口</label><input id="ldapPortInput" type="number" min="1" max="65535" inputmode="numeric" /></div>
               <div class="cluster-field"><label for="ldapTLSModeSelect">连接安全</label><select id="ldapTLSModeSelect"><option value="starttls">StartTLS（推荐）</option><option value="ldaps">LDAPS</option><option value="plain">普通 LDAP（不安全）</option></select></div>
               <div class="cluster-field"><label for="ldapServerNameInput">TLS Server Name <span>可选</span></label><input id="ldapServerNameInput" type="text" placeholder="默认使用 LDAP 地址" /></div>
-              <div class="cluster-field full-field"><label for="ldapCAFileInput">自定义 CA 文件 <span>服务端路径，可选</span></label><input id="ldapCAFileInput" type="text" spellcheck="false" placeholder="/etc/etcd-studio/ldap-ca.pem" /></div>
+              <div class="cluster-field full-field"><label for="ldapCAFileInput">自定义 CA 文件 <span>服务端路径，可选</span></label><input id="ldapCAFileInput" type="text" spellcheck="false" placeholder="/data/ldap-ca.pem" /><p>CA 文件必须放在认证配置文件所在的数据目录内。</p></div>
               <div class="cluster-field full-field"><label for="ldapBaseDNInput">Base DN <span>搜索模式必填</span></label><input id="ldapBaseDNInput" type="text" spellcheck="false" placeholder="dc=example,dc=com" /></div>
               <div class="cluster-field"><label for="ldapBindDNInput">Bind DN <span>可选的只读查询账户</span></label><input id="ldapBindDNInput" type="text" autocomplete="username" placeholder="cn=reader,dc=example,dc=com" /></div>
               <div class="cluster-field"><label for="ldapBindPasswordInput">Bind 密码 <span id="ldapBindPasswordHint">可选</span></label><input id="ldapBindPasswordInput" type="password" autocomplete="new-password" placeholder="留空保持不变" /></div>
@@ -559,7 +559,7 @@
             <div class="cluster-field full-field">
               <label for="storageLocalFileInput">历史文件路径 <span>服务端本地路径</span></label>
               <input id="storageLocalFileInput" type="text" spellcheck="false" placeholder="/data/history.jsonl" />
-              <p>文件以 0600 权限保存。多实例部署不要选择本地文件。</p>
+              <p>文件须位于 HISTORY_FILE 所在的数据目录内，并以 0600 权限保存。多实例部署不要选择本地文件。</p>
             </div>
           </div>
 

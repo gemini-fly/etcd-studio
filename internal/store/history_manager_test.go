@@ -91,6 +91,27 @@ func TestHistoryStorageInputValidationAndDefaults(t *testing.T) {
 	}
 }
 
+func TestHistoryManagerRejectsLocalFileOutsideManagedDirectory(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "history.jsonl")
+	manager, err := NewHistoryManager(
+		filepath.Join(directory, "history-storage.json"),
+		filepath.Join(directory, "history.jsonl"),
+		time.Second,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer manager.Close()
+	if err := manager.Test(context.Background(), HistoryStorageInput{Type: HistoryStorageLocal, LocalFile: outside}); err == nil {
+		t.Fatal("outside local history path was accepted")
+	}
+	if _, err := os.Stat(outside); !os.IsNotExist(err) {
+		t.Fatalf("outside history file was created: %v", err)
+	}
+}
+
 func TestHistoryManagerMigratesVersionOneConfigToDefaultRetention(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()

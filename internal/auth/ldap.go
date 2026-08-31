@@ -7,12 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	ldap "github.com/go-ldap/ldap/v3"
+
+	"github.com/gemini-fly/etcd-studio/internal/safefile"
 )
 
 const (
@@ -38,7 +39,7 @@ func (m *Manager) AuthenticateLDAP(ctx context.Context, username, password strin
 	config := m.config.LDAP
 	m.mu.RUnlock()
 
-	connection, err := dialLDAP(ctx, config, m.timeout)
+	connection, err := dialLDAP(ctx, config, m.timeout, m.fileRoot)
 	if err != nil {
 		return Principal{}, fmt.Errorf("connect LDAP: %w", err)
 	}
@@ -89,7 +90,7 @@ func (m *Manager) TestLDAP(ctx context.Context, input LDAPSettingsInput) error {
 	if err != nil {
 		return err
 	}
-	connection, err := dialLDAP(ctx, config, m.timeout)
+	connection, err := dialLDAP(ctx, config, m.timeout, m.fileRoot)
 	if err != nil {
 		return err
 	}
@@ -170,8 +171,8 @@ func normalizeLDAPSettings(input LDAPSettingsInput, current ldapSettings, requir
 	return config, nil
 }
 
-func dialLDAP(ctx context.Context, config ldapSettings, timeout time.Duration) (*ldap.Conn, error) {
-	tlsConfig, err := ldapTLSConfig(config)
+func dialLDAP(ctx context.Context, config ldapSettings, timeout time.Duration, managedRoot string) (*ldap.Conn, error) {
+	tlsConfig, err := ldapTLSConfig(config, managedRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +201,7 @@ func dialLDAP(ctx context.Context, config ldapSettings, timeout time.Duration) (
 	return connection, nil
 }
 
-func ldapTLSConfig(config ldapSettings) (*tls.Config, error) {
+func ldapTLSConfig(config ldapSettings, managedRoot string) (*tls.Config, error) {
 	serverName := config.ServerName
 	if serverName == "" {
 		serverName = config.Host
@@ -209,7 +210,7 @@ func ldapTLSConfig(config ldapSettings) (*tls.Config, error) {
 	if config.CAFile == "" {
 		return tlsConfig, nil
 	}
-	data, err := os.ReadFile(config.CAFile)
+	data, err := safefile.ReadFile(managedRoot, config.CAFile)
 	if err != nil {
 		return nil, fmt.Errorf("read LDAP CA file: %w", err)
 	}

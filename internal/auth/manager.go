@@ -186,6 +186,7 @@ type session struct {
 type Manager struct {
 	mu         sync.RWMutex
 	filePath   string
+	fileRoot   string
 	timeout    time.Duration
 	config     persistedConfig
 	configured bool
@@ -200,7 +201,7 @@ func NewManager(filePath string, timeout time.Duration) (*Manager, error) {
 	if timeout <= 0 {
 		return nil, errors.New("auth connection timeout must be positive")
 	}
-	manager := &Manager{filePath: filePath, timeout: timeout, sessions: make(map[string]session)}
+	manager := &Manager{filePath: filePath, fileRoot: filepath.Dir(filePath), timeout: timeout, sessions: make(map[string]session)}
 	if err := manager.load(); err != nil {
 		return nil, err
 	}
