@@ -1,0 +1,23 @@
+[Unit]
+Description=Etcd Studio
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=etcd-studio
+Group=etcd-studio
+WorkingDirectory=/opt/etcd-studio
+EnvironmentFile=/etc/etcd-studio/etcd-studio.env
+ExecStart=/opt/etcd-studio/etcd-studio
+Restart=on-failure
+RestartSec=5s
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/etcd-studio
+
+[Install]
+WantedBy=multi-user.target

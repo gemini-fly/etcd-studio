@@ -24,8 +24,8 @@ jobs:
         run: go test -race ./...
       - name: Vet
         run: go vet ./...
-      - name: Build
-        run: CGO_ENABLED=0 go build -trimpath ./cmd/etcd-studio
+      - name: Build and verify Linux package
+        run: ./scripts/package-linux-amd64.sh
       - name: Check frontend JavaScript
         run: |
           node --check internal/app/web/json-validator.js

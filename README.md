@@ -92,6 +92,46 @@ CLUSTERS_FILE=/var/lib/etcd-studio/clusters.json \
 go run ./cmd/etcd-studio
 ```
 
+## Ubuntu 二进制部署
+
+生成 Linux amd64 发布包：
+
+```bash
+./scripts/package-linux-amd64.sh
+```
+
+产物固定为 `bin/etcd-studio-linux-amd64.tar.gz`，包内固定使用 `etcd-studio/` 根目录，不包含提交号或 macOS 扩展属性。生产环境将程序、配置和持久化数据分开保存：
+
+```text
+/opt/etcd-studio/                 程序、许可证和部署模板
+/etc/etcd-studio/etcd-studio.env 启动配置
+/var/lib/etcd-studio/             用户、集群、历史及审计数据
+```
+
+首次安装：
+
+```bash
+id -u etcd-studio >/dev/null 2>&1 || sudo useradd --system --home-dir /var/lib/etcd-studio --shell /usr/sbin/nologin etcd-studio
+sudo install -d -m 0755 /opt
+sudo tar -xzf etcd-studio-linux-amd64.tar.gz -C /opt
+sudo install -d -m 0750 /etc/etcd-studio
+sudo install -d -m 0700 -o etcd-studio -g etcd-studio /var/lib/etcd-studio
+sudo install -m 0600 /opt/etcd-studio/deploy/etcd-studio.env.example /etc/etcd-studio/etcd-studio.env
+sudo install -m 0644 /opt/etcd-studio/deploy/etcd-studio.service /etc/systemd/system/etcd-studio.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now etcd-studio
+sudo journalctl -u etcd-studio -n 50 --no-pager
+```
+
+最后一条命令可查看首次启动时仅显示一次的临时管理员密码。升级时只替换 `/opt/etcd-studio`，不会覆盖 `/etc` 中的启动配置或 `/var/lib` 中的持久化数据：
+
+```bash
+sudo systemctl stop etcd-studio
+sudo tar -xzf etcd-studio-linux-amd64.tar.gz -C /opt
+sudo systemctl start etcd-studio
+sudo systemctl status etcd-studio --no-pager
+```
+
 ## Docker
 
 ```bash
